@@ -19,19 +19,26 @@ type piece struct {
 	name     string
 }
 
-func doBattles(publishCh <-chan move, users []user) []piece {
+func (u user) doBattles(subCh <-chan move) []piece {
 	fights := []piece{}
-	for mv := range publishCh {
-		for _, u := range users {
-			if u.name == mv.userName {
-				continue
-			}
-			for _, piece := range u.pieces {
-				if piece.location == mv.piece.location {
-					fights = append(fights, piece)
-				}
+	for mv := range subCh {
+		if u.name == mv.userName {
+			continue
+		}
+		for _, piece := range u.pieces {
+			if piece.location == mv.piece.location {
+				fights = append(fights, piece)
 			}
 		}
 	}
+
 	return fights
+}
+
+func distributeBattles(publishCh <-chan move, subChans []chan move) {
+	for mv := range publishCh {
+		for _, subCh := range subChans {
+			subCh <- mv
+		}
+	}
 }

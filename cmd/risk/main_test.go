@@ -140,26 +140,43 @@ func Test(t *testing.T) {
 
 	skipped := len(submitCases) - len(testCases)
 
-	passed, failed := 0, 0
+	var passed, failed int
 
 	for _, test := range testCases {
 		bufferedCh := make(chan move, 100)
 		mover := user{}
-
 		for _, u := range test.users {
 			if u.name == test.mv.userName {
 				mover = u
 			}
 		}
 		if mover.name == "" {
-			t.Errorf("Test Failed: user with name %v not found", test.mv.userName)
+			t.Errorf(`---------------------------------
+Test Failed:
+  user with name %v not found
+`, test.mv.userName)
 			failed++
 			continue
 		}
 		mover.march(test.mv.piece, bufferedCh)
 		close(bufferedCh)
-		output := doBattles(bufferedCh, test.users)
-		if !slices.Equal(output, test.expectedFightLocations) {
+
+		subChans := []chan move{}
+		for range test.users {
+			subChans = append(subChans, make(chan move, 100))
+		}
+		distributeBattles(bufferedCh, subChans)
+		for _, subChan := range subChans {
+			close(subChan)
+		}
+		battles := []piece{}
+		for i, u := range test.users {
+			subChan := subChans[i]
+			userBattles := u.doBattles(subChan)
+			battles = append(battles, userBattles...)
+		}
+
+		if !slices.Equal(battles, test.expectedFightLocations) {
 			t.Errorf(`---------------------------------
 Test Failed:
   users:
@@ -174,7 +191,7 @@ Test Failed:
 				formatSlice(test.users),
 				test.mv,
 				formatSlice(test.expectedFightLocations),
-				formatSlice(output),
+				formatSlice(battles),
 			)
 			failed++
 		} else {
@@ -192,7 +209,7 @@ Test Passed:
 				formatSlice(test.users),
 				test.mv,
 				formatSlice(test.expectedFightLocations),
-				formatSlice(output),
+				formatSlice(battles),
 			)
 			passed++
 		}
