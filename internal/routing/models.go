@@ -1,16 +1,13 @@
 package routing
 
-const (
-	ArmyMovesPrefix = "army_moves"
+import "time"
 
-	WarRecognitionsPrefix = "war"
+type PlayingState struct {
+	IsPaused bool
+}
 
-	PauseKey = "pause"
-
-	GameLogSlug = "game_logs"
-)
-
-const (
-	ExchangePerilDirect = "peril_direct"
-	ExchangePerilTopic  = "peril_topic"
-)
+type GameLog struct {
+	CurrentTime time.Time
+	Message     string
+	Username    string
+}
