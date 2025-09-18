@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go-pubsub-labs/internal/gamelogic"
 	"go-pubsub-labs/internal/pubsub"
 	"go-pubsub-labs/internal/routing"
 	"os"
@@ -32,9 +33,33 @@ func main() {
 
 	fmt.Println("Connected to RabbitMQ")
 
-	pubsub.PublishJSON(ch, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
-		IsPaused: true,
-	})
+	gamelogic.PrintServerHelp()
+
+gameLoop:
+	for {
+		words := gamelogic.GetInput()
+		if len(words) == 0 {
+			continue
+		}
+
+		switch words[0] {
+		case "pause":
+			fmt.Println("Game paused.")
+			pubsub.PublishJSON(ch, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
+				IsPaused: true,
+			})
+		case "resume":
+			fmt.Println("Game resumed.")
+			pubsub.PublishJSON(ch, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
+				IsPaused: false,
+			})
+		case "quit":
+			fmt.Println("Quitting game...")
+			break gameLoop
+		default:
+			fmt.Println("Unknown command:", words[0])
+		}
+	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
