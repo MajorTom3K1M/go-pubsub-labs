@@ -5,9 +5,6 @@ import (
 	"go-pubsub-labs/internal/gamelogic"
 	"go-pubsub-labs/internal/pubsub"
 	"go-pubsub-labs/internal/routing"
-	"os"
-	"os/signal"
-	"syscall"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -43,6 +40,20 @@ func main() {
 	fmt.Printf("Client setup complete for user %s, queue=%s\n", username, q.Name)
 
 	gameState := gamelogic.NewGameState(username)
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		queueName,
+		routing.PauseKey,
+		pubsub.Transient,
+		handlerPause(gameState),
+	)
+	if err != nil {
+		fmt.Println("subscribe error:", err)
+		return
+	}
+	// fmt.Println("Subscribed to pause messages")
 
 gameLoop:
 	for {
@@ -81,11 +92,4 @@ gameLoop:
 			continue
 		}
 	}
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
-
-	<-sigs
-
-	fmt.Println("Shutting down Peril client...")
 }

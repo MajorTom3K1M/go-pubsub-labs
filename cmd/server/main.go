@@ -33,6 +33,14 @@ func main() {
 
 	fmt.Println("Connected to RabbitMQ")
 
+	key := fmt.Sprintf("%s.*", routing.GameLogSlug)
+	_, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, key, pubsub.Durable)
+	if err != nil {
+		fmt.Println("setup error:", err)
+		return
+	}
+	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
+
 	gamelogic.PrintServerHelp()
 
 gameLoop:

@@ -64,3 +64,44 @@ func DeclareAndBind(
 
 	return ch, queue, nil
 }
+
+func SubscribeJSON[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	queueType simpleQueueType,
+	handler func(T),
+) error {
+	ch, q, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	if err != nil {
+		fmt.Println("setup error:", err)
+		return err
+	}
+
+	deliveryChan, err := ch.Consume(q.Name, "", false, false, false, false, nil)
+	if err != nil {
+		fmt.Println("Failed to register a consumer:", err)
+		return err
+	}
+
+	go func(deliveryChan <-chan amqp.Delivery, handler func(T)) {
+		for d := range deliveryChan {
+			var msg T
+			if err := json.Unmarshal(d.Body, &msg); err != nil {
+				fmt.Println("Failed to unmarshal JSON:", err)
+				continue
+			}
+
+			handler(msg)
+
+			err := d.Ack(false)
+			if err != nil {
+				fmt.Println("Failed to acknowledge message:", err)
+				continue
+			}
+		}
+	}(deliveryChan, handler)
+
+	return nil
+}
