@@ -42,6 +42,46 @@ func main() {
 
 	fmt.Printf("Client setup complete for user %s, queue=%s\n", username, q.Name)
 
+	gameState := gamelogic.NewGameState(username)
+
+gameLoop:
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+
+		switch input[0] {
+		case "spawn":
+			err := gameState.CommandSpawn(input)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Printf("Current Units: %+v\n", gameState.GetPlayerSnap())
+		case "move":
+			armyMove, err := gameState.CommandMove(input)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Printf("Moved unit: %+v\n", armyMove)
+		case "status":
+			gameState.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Println("Spamming not allowed yet!")
+		case "quit":
+			gamelogic.PrintQuit()
+			break gameLoop
+		default:
+			fmt.Println("Unknown command:", input[0])
+			gamelogic.PrintClientHelp()
+			continue
+		}
+	}
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
