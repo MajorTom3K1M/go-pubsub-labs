@@ -42,7 +42,7 @@ func getAllRanks() map[UnitRank]struct{} {
 
 func getAllLocations() map[Location]struct{} {
 	return map[Location]struct{}{
-		"america":    {},
+		"americas":   {},
 		"europe":     {},
 		"africa":     {},
 		"asia":       {},

@@ -53,7 +53,22 @@ func main() {
 		fmt.Println("subscribe error:", err)
 		return
 	}
-	// fmt.Println("Subscribed to pause messages")
+	fmt.Println("Subscribed to pause messages")
+
+	queueName = fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username)
+	key := fmt.Sprintf("%s.*", routing.ArmyMovesPrefix)
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		queueName,
+		key,
+		pubsub.Transient,
+		handlerArmyMove(gameState),
+	)
+	if err != nil {
+		fmt.Println("subscribe error:", err)
+		return
+	}
 
 gameLoop:
 	for {
@@ -76,7 +91,17 @@ gameLoop:
 				fmt.Println(err)
 				continue
 			}
-			fmt.Printf("Moved unit: %+v\n", armyMove)
+			err = pubsub.PublishJSON(
+				ch,
+				routing.ExchangePerilTopic,
+				fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
+				armyMove,
+			)
+			if err != nil {
+				fmt.Println("publish error:", err)
+				continue
+			}
+			fmt.Println("Move command published.")
 		case "status":
 			gameState.CommandStatus()
 		case "help":
