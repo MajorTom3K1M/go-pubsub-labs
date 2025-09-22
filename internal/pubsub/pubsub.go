@@ -15,6 +15,14 @@ const (
 	Transient simpleQueueType = "transient"
 )
 
+type AckType string
+
+const (
+	Ack         AckType = "ack"
+	NackRequeue AckType = "nack_requeue"
+	NackDiscard AckType = "nack_discard"
+)
+
 func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
 	jsonData, err := json.Marshal(val)
 	if err != nil {
@@ -71,7 +79,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	queueType simpleQueueType,
-	handler func(T),
+	handler func(T) AckType,
 ) error {
 	ch, q, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
 	if err != nil {
@@ -85,7 +93,7 @@ func SubscribeJSON[T any](
 		return err
 	}
 
-	go func(deliveryChan <-chan amqp.Delivery, handler func(T)) {
+	go func(deliveryChan <-chan amqp.Delivery, handler func(T) AckType) {
 		for d := range deliveryChan {
 			var msg T
 			if err := json.Unmarshal(d.Body, &msg); err != nil {
@@ -93,9 +101,17 @@ func SubscribeJSON[T any](
 				continue
 			}
 
-			handler(msg)
-
-			err := d.Ack(false)
+			switch handler(msg) {
+			case Ack:
+				d.Ack(false)
+				fmt.Println("Ack")
+			case NackDiscard:
+				d.Nack(false, false)
+				fmt.Println("NackDiscard")
+			case NackRequeue:
+				d.Nack(false, true)
+				fmt.Println("NackRequeue")
+			}
 			if err != nil {
 				fmt.Println("Failed to acknowledge message:", err)
 				continue
