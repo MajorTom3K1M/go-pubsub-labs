@@ -29,18 +29,15 @@ func main() {
 		return
 	}
 
-	queueName := fmt.Sprintf("%s.%s", routing.PauseKey, username)
-	ch, q, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilDirect, queueName, routing.PauseKey, pubsub.Transient)
+	ch, err := conn.Channel()
 	if err != nil {
-		fmt.Println("setup error:", err)
+		fmt.Println("Failed to open a channel:", err)
 		return
 	}
-	defer ch.Close()
-
-	fmt.Printf("Client setup complete for user %s, queue=%s\n", username, q.Name)
 
 	gameState := gamelogic.NewGameState(username)
 
+	queueName := fmt.Sprintf("%s.%s", routing.PauseKey, username)
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
@@ -63,7 +60,22 @@ func main() {
 		queueName,
 		key,
 		pubsub.Transient,
-		handlerArmyMove(gameState),
+		handlerArmyMove(gameState, ch),
+	)
+	if err != nil {
+		fmt.Println("subscribe error:", err)
+		return
+	}
+
+	queueName = routing.WarRecognitionsPrefix
+	key = fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix)
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		queueName,
+		key,
+		pubsub.Durable,
+		handlerWar(gameState),
 	)
 	if err != nil {
 		fmt.Println("subscribe error:", err)
