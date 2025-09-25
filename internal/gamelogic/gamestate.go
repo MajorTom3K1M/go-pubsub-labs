@@ -1,6 +1,10 @@
 package gamelogic
 
-import "sync"
+import (
+	"go-pubsub-labs/internal/routing"
+	"sync"
+	"time"
+)
 
 type GameState struct {
 	Player Player
@@ -90,5 +94,13 @@ func (gs *GameState) GetPlayerSnap() Player {
 	return Player{
 		Username: gs.Player.Username,
 		Units:    Units,
+	}
+}
+
+func (gs *GameState) NewGameLog(message string) routing.GameLog {
+	return routing.GameLog{
+		CurrentTime: time.Now(),
+		Message:     message,
+		Username:    gs.Player.Username,
 	}
 }

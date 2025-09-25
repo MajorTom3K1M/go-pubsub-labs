@@ -10,7 +10,7 @@ type MoveOutcome int
 
 const (
 	MoveOutcomeSamePlayer MoveOutcome = iota
-	MoveOutcomeSafe
+	MoveOutComeSafe
 	MoveOutcomeMakeWar
 )
 
@@ -35,7 +35,7 @@ func (gs *GameState) HandleMove(move ArmyMove) MoveOutcome {
 		return MoveOutcomeMakeWar
 	}
 	fmt.Printf("You are safe from %s's units.\n", move.Player.Username)
-	return MoveOutcomeSafe
+	return MoveOutComeSafe
 }
 
 func getOverlappingLocation(p1 Player, p2 Player) Location {

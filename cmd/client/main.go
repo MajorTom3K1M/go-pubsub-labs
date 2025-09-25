@@ -5,6 +5,7 @@ import (
 	"go-pubsub-labs/internal/gamelogic"
 	"go-pubsub-labs/internal/pubsub"
 	"go-pubsub-labs/internal/routing"
+	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -37,49 +38,38 @@ func main() {
 
 	gameState := gamelogic.NewGameState(username)
 
-	queueName := fmt.Sprintf("%s.%s", routing.PauseKey, username)
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+"."+gameState.GetUsername(),
+		routing.ArmyMovesPrefix+".*",
+		pubsub.Transient,
+		handlerArmyMove(gameState, ch),
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to army moves: %v", err)
+	}
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.WarRecognitionsPrefix,
+		routing.WarRecognitionsPrefix+".*",
+		pubsub.Durable,
+		handlerWar(gameState, ch),
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to war declarations: %v", err)
+	}
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
-		queueName,
+		routing.PauseKey+"."+gameState.GetUsername(),
 		routing.PauseKey,
 		pubsub.Transient,
 		handlerPause(gameState),
 	)
 	if err != nil {
-		fmt.Println("subscribe error:", err)
-		return
-	}
-	fmt.Println("Subscribed to pause messages")
-
-	queueName = fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username)
-	key := fmt.Sprintf("%s.*", routing.ArmyMovesPrefix)
-	err = pubsub.SubscribeJSON(
-		conn,
-		routing.ExchangePerilTopic,
-		queueName,
-		key,
-		pubsub.Transient,
-		handlerArmyMove(gameState, ch),
-	)
-	if err != nil {
-		fmt.Println("subscribe error:", err)
-		return
-	}
-
-	queueName = routing.WarRecognitionsPrefix
-	key = fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix)
-	err = pubsub.SubscribeJSON(
-		conn,
-		routing.ExchangePerilTopic,
-		queueName,
-		key,
-		pubsub.Durable,
-		handlerWar(gameState),
-	)
-	if err != nil {
-		fmt.Println("subscribe error:", err)
-		return
+		log.Fatalf("could not subscribe to pause: %v", err)
 	}
 
 gameLoop:
@@ -96,7 +86,6 @@ gameLoop:
 				fmt.Println(err)
 				continue
 			}
-			fmt.Printf("Current Units: %+v\n", gameState.GetPlayerSnap())
 		case "move":
 			armyMove, err := gameState.CommandMove(input)
 			if err != nil {
@@ -106,7 +95,7 @@ gameLoop:
 			err = pubsub.PublishJSON(
 				ch,
 				routing.ExchangePerilTopic,
-				fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
+				fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, armyMove.Player.Username),
 				armyMove,
 			)
 			if err != nil {

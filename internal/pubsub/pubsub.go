@@ -96,7 +96,8 @@ func SubscribeJSON[T any](
 		return err
 	}
 
-	go func(deliveryChan <-chan amqp.Delivery, handler func(T) AckType) {
+	go func() {
+		defer ch.Close()
 		for d := range deliveryChan {
 			var msg T
 			if err := json.Unmarshal(d.Body, &msg); err != nil {
@@ -107,20 +108,17 @@ func SubscribeJSON[T any](
 			switch handler(msg) {
 			case Ack:
 				d.Ack(false)
-				fmt.Println("Ack")
 			case NackDiscard:
 				d.Nack(false, false)
-				fmt.Println("NackDiscard")
 			case NackRequeue:
 				d.Nack(false, true)
-				fmt.Println("NackRequeue")
 			}
 			if err != nil {
 				fmt.Println("Failed to acknowledge message:", err)
 				continue
 			}
 		}
-	}(deliveryChan, handler)
+	}()
 
 	return nil
 }
