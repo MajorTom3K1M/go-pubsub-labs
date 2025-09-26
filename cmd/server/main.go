@@ -5,6 +5,7 @@ import (
 	"go-pubsub-labs/internal/gamelogic"
 	"go-pubsub-labs/internal/pubsub"
 	"go-pubsub-labs/internal/routing"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -40,6 +41,18 @@ func main() {
 		return
 	}
 	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
+
+	err = pubsub.SubscribeGob(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.Durable,
+		handlerLog(),
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to game logs: %v", err)
+	}
 
 	gamelogic.PrintServerHelp()
 
