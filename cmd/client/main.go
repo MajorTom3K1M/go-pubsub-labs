@@ -6,6 +6,7 @@ import (
 	"go-pubsub-labs/internal/pubsub"
 	"go-pubsub-labs/internal/routing"
 	"log"
+	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -108,7 +109,29 @@ gameLoop:
 		case "help":
 			gamelogic.PrintClientHelp()
 		case "spam":
-			fmt.Println("Spamming not allowed yet!")
+			if len(input) < 2 {
+				fmt.Println("Usage: spam <number_of_moves>")
+				continue
+			}
+			number, err := strconv.Atoi(input[1])
+			if err != nil || number <= 0 {
+				fmt.Println("Please provide a valid positive integer for number_of_moves.")
+				continue
+			}
+			for i := 0; i < number; i++ {
+				maliciousLog := gamelogic.GetMaliciousLog()
+				gameLog := gameState.NewGameLog(maliciousLog)
+				err := pubsub.PublishGob(
+					ch,
+					routing.ExchangePerilTopic,
+					routing.GameLogSlug+"."+gameState.GetUsername(),
+					gameLog,
+				)
+				if err != nil {
+					fmt.Println("publish error:", err)
+					continue
+				}
+			}
 		case "quit":
 			gamelogic.PrintQuit()
 			break gameLoop

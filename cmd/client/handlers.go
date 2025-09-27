@@ -57,7 +57,7 @@ func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.Recogn
 		out, winner, loser := gs.HandleWar(rw)
 		switch out {
 		case gamelogic.WarOutcomeNotInvolved:
-			return pubsub.NackRequeue
+			return pubsub.Ack
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon:
