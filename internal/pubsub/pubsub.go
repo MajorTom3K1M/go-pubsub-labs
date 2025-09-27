@@ -90,6 +90,12 @@ func SubscribeJSON[T any](
 		return err
 	}
 
+	err = ch.Qos(10, 0, false)
+	if err != nil {
+		fmt.Println("Failed to set QoS:", err)
+		return err
+	}
+
 	deliveryChan, err := ch.Consume(q.Name, "", false, false, false, false, nil)
 	if err != nil {
 		fmt.Println("Failed to register a consumer:", err)
